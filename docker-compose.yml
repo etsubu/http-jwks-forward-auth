@@ -1,0 +1,42 @@
+version: "3.3"
+
+services:
+
+  traefik:
+    image: "traefik:v2.9"
+    container_name: "traefik"
+    command:
+      #- "--log.level=DEBUG"
+      - "--api.insecure=true"
+      - "--providers.docker=true"
+      - "--providers.docker.exposedbydefault=false"
+      - "--entrypoints.web.address=:8081"
+    ports:
+      - "80:80"
+      - "8080:8080"
+      - "8081:8081"
+    volumes:
+      - "/var/run/docker.sock:/var/run/docker.sock:ro"
+
+  whoami:
+    image: "traefik/whoami"
+    container_name: "simple-service"
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.whoami.rule=PathPrefix(`/whoami`)"
+      - "traefik.http.routers.whoami.entrypoints=web"
+      - "traefik.http.routers.whoami.middlewares=traefik-http-forward-auth"
+
+  traefik-forward-auth:
+    container_name: "traefik-http-forward-auth"
+    build: .
+    volumes:
+      - "./config.yaml:/config.yaml"
+    environment:
+      CONFIG_PATH: "/config.yaml"
+      GIN_MODE: release
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.middlewares.traefik-http-forward-auth.forwardauth.address=http://traefik-http-forward-auth:8080"
+      - "traefik.http.middlewares.traefik-http-forward-auth.forwardauth.authRequestHeaders=Authorization"
+      - "traefik.http.middlewares.traefik-http-forward-auth.forwardauth.authResponseHeaders=X-Forwarded-User, X-Forwarded-Roles"
