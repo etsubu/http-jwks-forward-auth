@@ -33,7 +33,7 @@ func CreateConfigSync() (*SyncedConfig, *context.CancelFunc) {
 	ctx, cancel := context.WithCancel(ctx)
 	path, present := os.LookupEnv("CONFIG_PATH")
 	if !present {
-		path = "../config.yaml"
+		path = "config.yaml"
 	}
 	c, err := parseConfig(path)
 	if err != nil {
@@ -65,7 +65,7 @@ func CreateConfigSync() (*SyncedConfig, *context.CancelFunc) {
 						lastModified = modified.ModTime()
 					}
 				}
-				time.Sleep(1 * time.Second)
+				time.Sleep(5 * time.Second)
 			}
 		}
 	}()
