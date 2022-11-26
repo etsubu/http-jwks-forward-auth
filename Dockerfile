@@ -1,7 +1,7 @@
 FROM golang:1.19 as build
 
 WORKDIR /go/src/app
-COPY http-forward-auth .
+COPY http-jwks-forward-auth .
 
 RUN go mod download
 RUN CGO_ENABLED=0 go build -o /go/bin/app

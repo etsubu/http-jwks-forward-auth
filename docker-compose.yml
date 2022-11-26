@@ -25,10 +25,10 @@ services:
       - "traefik.enable=true"
       - "traefik.http.routers.whoami.rule=PathPrefix(`/whoami`)"
       - "traefik.http.routers.whoami.entrypoints=web"
-      - "traefik.http.routers.whoami.middlewares=traefik-http-forward-auth"
+      - "traefik.http.routers.whoami.middlewares=traefik-http-jwks-forward-auth"
 
   traefik-forward-auth:
-    container_name: "traefik-http-forward-auth"
+    container_name: "traefik-http-jwks-forward-auth"
     build: .
     volumes:
       - "./config.yaml:/config.yaml"
@@ -37,6 +37,6 @@ services:
       GIN_MODE: release
     labels:
       - "traefik.enable=true"
-      - "traefik.http.middlewares.traefik-http-forward-auth.forwardauth.address=http://traefik-http-forward-auth:8080"
-      - "traefik.http.middlewares.traefik-http-forward-auth.forwardauth.authRequestHeaders=Authorization"
-      - "traefik.http.middlewares.traefik-http-forward-auth.forwardauth.authResponseHeaders=X-Forwarded-User, X-Forwarded-Roles"
+      - "traefik.http.middlewares.traefik-http-jwks-forward-auth.forwardauth.address=http://traefik-http-jwks-forward-auth:8080"
+      - "traefik.http.middlewares.traefik-http-jwks-forward-auth.forwardauth.authRequestHeaders=Authorization"
+      - "traefik.http.middlewares.traefik-http-jwks-forward-auth.forwardauth.authResponseHeaders=X-Forwarded-User, X-Forwarded-Roles"
