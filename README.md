@@ -49,7 +49,7 @@ paths:
 
 Example usage of building and running the service with traefik and config.yaml in the same directory using docker-compose can be done as the following:
 
-```dockerfile
+```yaml
 version: "3.3"
 
 services:
