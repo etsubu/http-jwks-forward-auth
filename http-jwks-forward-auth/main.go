@@ -8,7 +8,6 @@ import (
 	"github.com/MicahParks/keyfunc"
 	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt/v4"
-	_ "gopkg.in/yaml.v3"
 	"log"
 	"strings"
 	"time"
