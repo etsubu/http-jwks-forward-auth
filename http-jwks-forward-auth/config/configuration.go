@@ -11,10 +11,12 @@ import (
 
 type Config struct {
 	Jwt struct {
-		JwksUrl  string `yaml:"jwks_url"`
-		Alg      string `yaml:"algorithm"`
-		Issuer   string `yaml:"issuer"`
-		Audience string `yaml:"audience"`
+		JwksUrl            string `yaml:"jwks_url"`
+		Alg                string `yaml:"algorithm"`
+		Issuer             string `yaml:"issuer"`
+		Audience           string `yaml:"audience"`
+		TrimPrefixInScopes bool   `yaml:"trim_prefix"`
+		RoleClaim          string `yaml:"role_claim"`
 	} `yaml:"jwt"`
 	Paths []struct {
 		Path    string   `yaml:"path"`

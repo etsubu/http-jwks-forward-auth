@@ -32,6 +32,8 @@ access control definitions to be updated during runtime without having to restar
 jwt:
   jwks_url: http://localhost/.well-known/jwks.json
   issuer: http://localhost
+  role_claim: cognito:groups
+  trim_prefix: true
 paths:
 - path: /whoami/asd
   scopes:

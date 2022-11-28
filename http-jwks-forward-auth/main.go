@@ -9,6 +9,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt/v4"
 	"log"
+	"reflect"
 	"strings"
 	"time"
 )
@@ -21,8 +22,9 @@ type jwksContext struct {
 }
 
 type JWTClaim struct {
-	Scope string `json:"scope"`
-	jwt.RegisteredClaims
+	Roles   []string
+	Subject string
+	Claims  jwt.MapClaims
 }
 
 func Contains[T comparable](s []T, e T) bool {
@@ -70,7 +72,7 @@ func (ctx *jwksContext) authenticate(c *gin.Context) {
 		return
 	}
 	conf := ctx.config.Config
-	roles := strings.Split(claims.Scope, " ")
+	roles := claims.Roles
 	for _, path := range conf.Paths {
 		if strings.HasPrefix(uri, path.Path) {
 			log.Println("Matched prefix " + path.Path)
@@ -118,7 +120,7 @@ func initializeJwks(config *config.SyncedConfig) (jwksContext, error) {
 }
 
 func (ctx *jwksContext) validateJwks(rawToken string) (*JWTClaim, error) {
-	token, err := jwt.ParseWithClaims(rawToken, &JWTClaim{}, ctx.jwks.Keyfunc)
+	token, err := jwt.ParseWithClaims(rawToken, jwt.MapClaims{}, ctx.jwks.Keyfunc)
 	if err != nil {
 		log.Printf("Failed to parse the JWT.\nError: %s", err.Error())
 		return nil, errors.New("invalid token")
@@ -131,7 +133,7 @@ func (ctx *jwksContext) validateJwks(rawToken string) (*JWTClaim, error) {
 	}
 	conf := ctx.config.Config.Jwt
 	// Validate issuer and audience if defined
-	claims := token.Claims.(*JWTClaim)
+	claims := token.Claims.(jwt.MapClaims)
 	if len(conf.Issuer) > 0 && !claims.VerifyIssuer(conf.Issuer, true) {
 		log.Println("Invalid issuer ")
 		return nil, errors.New("invalid issuer")
@@ -140,7 +142,68 @@ func (ctx *jwksContext) validateJwks(rawToken string) (*JWTClaim, error) {
 		log.Println("Invalid audience")
 		return nil, errors.New("invalid audience")
 	}
-	return claims, err
+	var roles []string
+	// Parse roles from scopes
+	switch v := claims["scope"].(type) {
+	case string:
+		roles = append(strings.Split(v, " "), v)
+		break
+	case []string:
+		roles = v
+		break
+	default:
+		log.Println("Unknown scope claim type " + reflect.TypeOf(v).String())
+	}
+	if conf.TrimPrefixInScopes {
+		// This is used to trim prefix ending in forward slash from scopes. This functionality is related to aws cognito when using client credentials.
+		// Client credentials cannot be assigned a "cognito_groups" claim the same way as the users can have and they will also contain a prefix
+		// We want to allow access control to use same roles for logged users and client credentials so we trim prefix from scopes
+		for i, role := range roles {
+			var index = strings.Index(role, "/")
+			if index != -1 {
+				roles[i] = role[index+1:]
+			}
+		}
+	}
+	// Parse roles from custom claim if defined
+	if len(conf.RoleClaim) > 0 {
+		// Custom claim for roles present
+		claimsMap := token.Claims.(jwt.MapClaims)
+		roleClaim, ok := claimsMap[conf.RoleClaim]
+		if ok {
+			switch v := roleClaim.(type) {
+			case string:
+				roles = append(roles, v)
+				break
+			case []string:
+				roles = append(roles, v...)
+				break
+			case []interface{}:
+				for _, a := range v {
+					vs, ok := a.(string)
+					if ok {
+						roles = append(roles, vs)
+					}
+				}
+			default:
+				log.Println("Unknown role claim type " + reflect.TypeOf(roleClaim).String())
+			}
+		}
+	}
+	jwtClaim := &JWTClaim{Roles: roles, Claims: claims}
+	// Parse subject field from token
+	sub, ok := claims["sub"]
+	if !ok {
+		log.Println("No subject present in the token")
+		return nil, errors.New("no subject in token")
+	}
+	if subject, ok2 := sub.(string); ok2 {
+		jwtClaim.Subject = subject
+	} else {
+		log.Println("Token subject was of invalid type")
+		return nil, errors.New("token subject was of invalid type")
+	}
+	return jwtClaim, nil
 }
 
 func main() {
